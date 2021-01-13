@@ -34,11 +34,11 @@ class LoRaClass : public Stream {
 public:
   LoRaClass();
 
-  int begin(long frequency);
+  bool begin(long frequency);
   void end();
 
-  int beginPacket(int implicitHeader = false);
-  int endPacket(bool async = false);
+  bool beginPacket(int implicitHeader = false);
+  bool endPacket(bool async = false, unsigned long timeout = 10000);
 
   int parsePacket(int size = 0);
   int packetRssi();
@@ -65,11 +65,15 @@ public:
 #endif
   void idle();
   void sleep();
+  bool isTransmitting();
 
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   void setFrequency(long frequency);
+  long getFrequency();
   void setSpreadingFactor(int sf);
+  int getSpreadingFactor();
   void setSignalBandwidth(long sbw);
+  long getSignalBandwidth();
   void setCodingRate4(int denominator);
   void setPreambleLength(long length);
   void setSyncWord(int sw);
@@ -93,21 +97,16 @@ public:
   void setSPIFrequency(uint32_t frequency);
 
   void dumpRegisters(Stream& out);
+  uint8_t readRegister(uint8_t address);
+  void writeRegister(uint8_t address, uint8_t value);
 
 private:
   void explicitHeaderMode();
   void implicitHeaderMode();
 
   void handleDio0Rise();
-  bool isTransmitting();
-
-  int getSpreadingFactor();
-  long getSignalBandwidth();
-
   void setLdoFlag();
 
-  uint8_t readRegister(uint8_t address);
-  void writeRegister(uint8_t address, uint8_t value);
   uint8_t singleTransfer(uint8_t address, uint8_t value);
 
   static void onDio0Rise();

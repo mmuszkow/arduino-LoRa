@@ -3,6 +3,11 @@
 
 #include <LoRa.h>
 
+// this is undefined for STM32
+#ifndef digitalPinToInterrupt
+# define digitalPinToInterrupt(p) (p)
+#endif
+
 // registers
 #define REG_FIFO                 0x00
 #define REG_OP_MODE              0x01
@@ -82,7 +87,7 @@ LoRaClass::LoRaClass() :
   setTimeout(0);
 }
 
-int LoRaClass::begin(long frequency)
+bool LoRaClass::begin(long frequency)
 {
 #if defined(ARDUINO_SAMD_MKRWAN1300) || defined(ARDUINO_SAMD_MKRWAN1310)
   pinMode(LORA_IRQ_DUMB, OUTPUT);
@@ -121,9 +126,8 @@ int LoRaClass::begin(long frequency)
 
   // check version
   uint8_t version = readRegister(REG_VERSION);
-  if (version != 0x12) {
-    return 0;
-  }
+  if (version != 0x12)
+    return false;
 
   // put in sleep mode
   sleep();
@@ -147,7 +151,7 @@ int LoRaClass::begin(long frequency)
   // put in standby mode
   idle();
 
-  return 1;
+  return true;
 }
 
 void LoRaClass::end()
@@ -159,11 +163,10 @@ void LoRaClass::end()
   _spi->end();
 }
 
-int LoRaClass::beginPacket(int implicitHeader)
+bool LoRaClass::beginPacket(int implicitHeader)
 {
-  if (isTransmitting()) {
-    return 0;
-  }
+  if (isTransmitting())
+    return false;
 
   // put in standby mode
   idle();
@@ -178,28 +181,33 @@ int LoRaClass::beginPacket(int implicitHeader)
   writeRegister(REG_FIFO_ADDR_PTR, 0);
   writeRegister(REG_PAYLOAD_LENGTH, 0);
 
-  return 1;
+  return true;
 }
 
-int LoRaClass::endPacket(bool async)
+bool LoRaClass::endPacket(bool async, unsigned long timeout)
 {
-  
   if ((async) && (_onTxDone))
       writeRegister(REG_DIO_MAPPING_1, 0x40); // DIO0 => TXDONE
 
   // put in TX mode
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
 
+  unsigned long timer = millis();
   if (!async) {
     // wait for TX done
     while ((readRegister(REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0) {
+      // unless timeout reached
+      if(millis() - timer > timeout) {
+        writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+        return false; 
+      }
       yield();
     }
     // clear IRQ's
     writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
   }
 
-  return 1;
+  return true;
 }
 
 bool LoRaClass::isTransmitting()
@@ -468,6 +476,17 @@ void LoRaClass::setFrequency(long frequency)
   writeRegister(REG_FRF_MSB, (uint8_t)(frf >> 16));
   writeRegister(REG_FRF_MID, (uint8_t)(frf >> 8));
   writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
+}
+
+long LoRaClass::getFrequency()
+{
+  uint64_t freq = 
+       readRegister(REG_FRF_LSB) | 
+      (readRegister(REG_FRF_MID) << 8) |
+      (readRegister(REG_FRF_MSB) << 16);
+  freq *= 32000000;
+  freq >>= 19;
+  return freq;
 }
 
 int LoRaClass::getSpreadingFactor()
