@@ -467,6 +467,17 @@ void LoRaClass::setTxPower(int level, int outputPin)
   }
 }
 
+int LoRaClass::getTxPower() {
+    uint8_t reg = readRegister(REG_PA_CONFIG);
+    int outputPower = reg & 0xF;
+    if(reg & 0x80) // PA_BOOST pin
+        return 2 + outputPower;
+    else { // RFO pin
+        float maxPower = 10.8f + 0.6f * ((reg & 0x70) >> 4);
+        return (int) (maxPower - (15 - outputPower)); 
+    }
+}
+
 void LoRaClass::setFrequency(long frequency)
 {
   _frequency = frequency;

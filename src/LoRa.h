@@ -68,10 +68,11 @@ public:
   bool isTransmitting();
 
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
+  int  getTxPower();
   void setFrequency(long frequency);
   long getFrequency();
   void setSpreadingFactor(int sf);
-  int getSpreadingFactor();
+  int  getSpreadingFactor();
   void setSignalBandwidth(long sbw);
   long getSignalBandwidth();
   void setCodingRate4(int denominator);
