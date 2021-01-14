@@ -34,7 +34,7 @@ class LoRaClass : public Stream {
 public:
   LoRaClass();
 
-  bool begin(long frequency);
+  bool begin(long frequency, long bw = 125E3, int sf = 9, int cr = 7, uint8_t sw = 0x12);
   void end();
 
   bool beginPacket(int implicitHeader = false);

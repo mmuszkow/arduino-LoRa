@@ -88,7 +88,7 @@ LoRaClass::LoRaClass() :
   setTimeout(0);
 }
 
-bool LoRaClass::begin(long frequency)
+bool LoRaClass::begin(long frequency, long bw, int sf, int cr, uint8_t sw)
 {
 #if defined(ARDUINO_SAMD_MKRWAN1300) || defined(ARDUINO_SAMD_MKRWAN1310)
   pinMode(LORA_IRQ_DUMB, OUTPUT);
@@ -124,6 +124,7 @@ bool LoRaClass::begin(long frequency)
 
   // start SPI
   _spi->begin();
+  delay(10);
 
   // check version
   uint8_t version = readRegister(REG_VERSION);
@@ -134,7 +135,8 @@ bool LoRaClass::begin(long frequency)
   sleep();
 
   // set frequency
-  setFrequency(frequency);
+  if(!setFrequency(frequency))
+      return false;
 
   // set base addresses
   writeRegister(REG_FIFO_TX_BASE_ADDR, 0);
@@ -146,8 +148,8 @@ bool LoRaClass::begin(long frequency)
   // set auto AGC
   writeRegister(REG_MODEM_CONFIG_3, 0x04);
 
-  // set output power to 17 dBm
-  setTxPower(17);
+  if(!(setSignalBandwidth(bw) && setSpreadingFactor(sf) && setCodingRate4(cr) && setSyncWord(sw)))
+      return false;
 
   // put in standby mode
   idle();
