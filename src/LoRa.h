@@ -67,25 +67,30 @@ public:
   void sleep();
   bool isTransmitting();
 
-  void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
+  bool setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   int  getTxPower();
-  void setFrequency(long frequency);
+  bool setFrequency(long frequency);
   long getFrequency();
-  void setSpreadingFactor(int sf);
+  bool setSpreadingFactor(int sf);
   int  getSpreadingFactor();
-  void setSignalBandwidth(long sbw);
+  bool setSignalBandwidth(long sbw);
   long getSignalBandwidth();
-  void setCodingRate4(int denominator);
-  void setPreambleLength(long length);
-  void setSyncWord(int sw);
+  bool setCodingRate4(int denominator);
+  int  getCodingRate4();
+  bool setPreambleLength(int length);
+  int  getPreambleLength();
+  bool setSyncWord(int sw);
+  int  getSyncWord();
   void enableCrc();
   void disableCrc();
+  bool isCrcOn();
   void enableInvertIQ();
   void disableInvertIQ();
   
-  void setOCP(uint8_t mA); // Over Current Protection control
-  
-  void setGain(uint8_t gain); // Set LNA gain
+  bool setOCP(uint8_t mA); // Over Current Protection control
+  uint8_t getOCP(); 
+  bool setGain(uint8_t gain); // Set LNA gain
+  uint8_t getGain();
 
   // deprecated
   void crc() { enableCrc(); }

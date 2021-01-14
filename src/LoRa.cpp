@@ -4,6 +4,7 @@
 #include <LoRa.h>
 
 // this is undefined for STM32
+// luckily all pins on STM32 are interruptable
 #ifndef digitalPinToInterrupt
 # define digitalPinToInterrupt(p) (p)
 #endif
@@ -430,8 +431,9 @@ void LoRaClass::sleep()
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }
 
-void LoRaClass::setTxPower(int level, int outputPin)
+bool LoRaClass::setTxPower(int _level, int outputPin)
 {
+  int level = _level;
   if (PA_OUTPUT_RFO_PIN == outputPin) {
     // RFO
     if (level < 0) {
@@ -465,6 +467,7 @@ void LoRaClass::setTxPower(int level, int outputPin)
 
     writeRegister(REG_PA_CONFIG, PA_BOOST | (level - 2));
   }
+  return getTxPower() == _level;
 }
 
 int LoRaClass::getTxPower() {
@@ -478,7 +481,7 @@ int LoRaClass::getTxPower() {
     }
 }
 
-void LoRaClass::setFrequency(long frequency)
+bool LoRaClass::setFrequency(long frequency)
 {
   _frequency = frequency;
 
@@ -487,6 +490,7 @@ void LoRaClass::setFrequency(long frequency)
   writeRegister(REG_FRF_MSB, (uint8_t)(frf >> 16));
   writeRegister(REG_FRF_MID, (uint8_t)(frf >> 8));
   writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
+  return getFrequency() == frequency;
 }
 
 long LoRaClass::getFrequency()
@@ -505,8 +509,9 @@ int LoRaClass::getSpreadingFactor()
   return readRegister(REG_MODEM_CONFIG_2) >> 4;
 }
 
-void LoRaClass::setSpreadingFactor(int sf)
+bool LoRaClass::setSpreadingFactor(int _sf)
 {
+  int sf = _sf;
   if (sf < 6) {
     sf = 6;
   } else if (sf > 12) {
@@ -523,6 +528,7 @@ void LoRaClass::setSpreadingFactor(int sf)
 
   writeRegister(REG_MODEM_CONFIG_2, (readRegister(REG_MODEM_CONFIG_2) & 0x0f) | ((sf << 4) & 0xf0));
   setLdoFlag();
+  return getSpreadingFactor() == _sf;
 }
 
 long LoRaClass::getSignalBandwidth()
@@ -545,7 +551,7 @@ long LoRaClass::getSignalBandwidth()
   return -1;
 }
 
-void LoRaClass::setSignalBandwidth(long sbw)
+bool LoRaClass::setSignalBandwidth(long sbw)
 {
   int bw;
 
@@ -567,12 +573,14 @@ void LoRaClass::setSignalBandwidth(long sbw)
     bw = 7;
   } else if (sbw <= 250E3) {
     bw = 8;
-  } else /*if (sbw <= 250E3)*/ {
+  } else /*if (sbw <= 500E3)*/ {
     bw = 9;
   }
 
   writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0x0f) | (bw << 4));
   setLdoFlag();
+
+  return getSignalBandwidth() == sbw;
 }
 
 void LoRaClass::setLdoFlag()
@@ -588,8 +596,9 @@ void LoRaClass::setLdoFlag()
   writeRegister(REG_MODEM_CONFIG_3, config3);
 }
 
-void LoRaClass::setCodingRate4(int denominator)
+bool LoRaClass::setCodingRate4(int _denominator)
 {
+  int denominator = _denominator;
   if (denominator < 5) {
     denominator = 5;
   } else if (denominator > 8) {
@@ -597,19 +606,37 @@ void LoRaClass::setCodingRate4(int denominator)
   }
 
   int cr = denominator - 4;
-
   writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0xf1) | (cr << 1));
+  
+  return getCodingRate4() == _denominator;
 }
 
-void LoRaClass::setPreambleLength(long length)
+int LoRaClass::getCodingRate4()
+{
+  return ((readRegister(REG_MODEM_CONFIG_1) & 0xE) >> 1) + 4;
+}
+
+bool LoRaClass::setPreambleLength(int length)
 {
   writeRegister(REG_PREAMBLE_MSB, (uint8_t)(length >> 8));
   writeRegister(REG_PREAMBLE_LSB, (uint8_t)(length >> 0));
+  return getPreambleLength() == length;
 }
 
-void LoRaClass::setSyncWord(int sw)
+int LoRaClass::getPreambleLength()
+{
+  return (((int) readRegister(REG_PREAMBLE_MSB)) << 8) | readRegister(REG_PREAMBLE_LSB);
+}
+
+bool LoRaClass::setSyncWord(int sw)
 {
   writeRegister(REG_SYNC_WORD, sw);
+  return getSyncWord() == sw;
+}
+
+int LoRaClass::getSyncWord()
+{
+  return readRegister(REG_SYNC_WORD);
 }
 
 void LoRaClass::enableCrc()
@@ -620,6 +647,11 @@ void LoRaClass::enableCrc()
 void LoRaClass::disableCrc()
 {
   writeRegister(REG_MODEM_CONFIG_2, readRegister(REG_MODEM_CONFIG_2) & 0xfb);
+}
+
+bool LoRaClass::isCrcOn()
+{
+  return readRegister(REG_MODEM_CONFIG_2) & 0x04;
 }
 
 void LoRaClass::enableInvertIQ()
@@ -634,7 +666,7 @@ void LoRaClass::disableInvertIQ()
   writeRegister(REG_INVERTIQ2, 0x1d);
 }
 
-void LoRaClass::setOCP(uint8_t mA)
+bool LoRaClass::setOCP(uint8_t mA)
 {
   uint8_t ocpTrim = 27;
 
@@ -645,10 +677,22 @@ void LoRaClass::setOCP(uint8_t mA)
   }
 
   writeRegister(REG_OCP, 0x20 | (0x1F & ocpTrim));
+  return getOCP() == mA;
 }
 
-void LoRaClass::setGain(uint8_t gain)
+uint8_t LoRaClass::getOCP()
 {
+  uint8_t ocpTrim = readRegister(REG_OCP) & 0x1F;
+  if(ocpTrim <= 15)
+    return 45 + 5 * ocpTrim;
+  if(ocpTrim > 15 && ocpTrim <= 27)
+    return -30 + 10 * ocpTrim;
+  return 240;
+}
+
+bool LoRaClass::setGain(uint8_t _gain)
+{
+  int gain = _gain;
   // check allowed range
   if (gain > 6) {
     gain = 6;
@@ -661,6 +705,7 @@ void LoRaClass::setGain(uint8_t gain)
   if (gain == 0) {
     // if gain = 0, enable AGC
     writeRegister(REG_MODEM_CONFIG_3, 0x04);
+    return true; // as gain value will be changed by AGC
   } else {
     // disable AGC
     writeRegister(REG_MODEM_CONFIG_3, 0x00);
@@ -670,7 +715,13 @@ void LoRaClass::setGain(uint8_t gain)
 	
     // set gain
     writeRegister(REG_LNA, readRegister(REG_LNA) | (gain << 5));
+    return getGain() == _gain;
   }
+}
+
+uint8_t LoRaClass::getGain()
+{
+  return readRegister(REG_LNA) >> 5;
 }
 
 byte LoRaClass::random()
