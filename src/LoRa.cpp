@@ -3,9 +3,9 @@
 
 #include <LoRa.h>
 
-// this is undefined for STM32
+// this is a bug in stm32duino - this macro is undefined
 // luckily all pins on STM32 are interruptable
-#ifndef digitalPinToInterrupt
+#if defined(__STM32F1__) &&  !defined(digitalPinToInterrupt)
 # define digitalPinToInterrupt(p) (p)
 #endif
 
@@ -151,6 +151,9 @@ bool LoRaClass::begin(long frequency, long bw, int sf, int cr, uint8_t sw)
   if(!(setSignalBandwidth(bw) && setSpreadingFactor(sf) && setCodingRate4(cr) && setSyncWord(sw)))
       return false;
 
+  if(!isLoraMode())
+      return false;
+
   // put in standby mode
   idle();
 
@@ -211,6 +214,11 @@ bool LoRaClass::endPacket(bool async, unsigned long timeout)
   }
 
   return true;
+}
+
+bool LoRaClass::isLoraMode()
+{
+  return readRegister(REG_OP_MODE) & MODE_LONG_RANGE_MODE;
 }
 
 bool LoRaClass::isTransmitting()
